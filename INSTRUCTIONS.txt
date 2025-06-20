@@ -1,0 +1,47 @@
+JHU Planetary Health Course Analysis - Instructions
+===============================================
+
+This project helps you extract, classify, and analyze course data for Planetary Health at Johns Hopkins University. You do not need to be a coder to use it!
+
+---
+
+**1. Setup**
+- Make sure you have Python 3 installed on your computer.
+- Open a terminal (or command prompt) and go to the project folder.
+- Install the required packages by running:
+  pip install -r requirements.txt
+
+---
+
+**2. Extract Course Data**
+- Go to the 'scripts' folder.
+- Open the file 'extract_all_terms.py' in a text editor.
+- Replace 'YOUR_API_KEY_HERE' with your actual API key (ask your project lead if you don't have it).
+- In the terminal, run:
+  python scripts/extract_all_terms.py
+- The data will be saved in the 'data' folder as CSV files.
+
+---
+
+**3. Classify and Analyze Courses**
+- You can use the Streamlit app for this (no coding needed).
+
+---
+
+**4. Run the Streamlit App**
+- In the terminal, run:
+  streamlit run scripts/streamlit_app.py
+- A web page will open in your browser.
+- Upload a course data CSV from the 'data' folder.
+- The app will show results and let you download the classified data.
+- You can also see charts and trends.
+
+---
+
+**5. Need Help?**
+- Ask your project lead or a team member for help if you get stuck.
+- You can also look at the README.md for more details.
+
+---
+
+**Enjoy exploring Planetary Health courses!** 
