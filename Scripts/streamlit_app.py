@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import sys
 import os
-sys.path.append(os.path.dirname(__file__))
-from classification import label_course, semantic_similarity_classify, zero_shot_classify, cluster_courses
-from analysis import plot_yearly_trends, plot_departmental_breakdown
+from Scripts.classification import (
+    label_course, semantic_similarity_classify, zero_shot_classify, cluster_courses
+)
+from Scripts.extract_all_terms import scrape_all_years
 
 st.set_page_config(page_title="JHU Planetary Health Course Analysis", layout="wide")
 st.title("JHU Planetary Health Course Analysis")
@@ -17,26 +17,20 @@ st.sidebar.markdown("""
 4. View visualizations of trends and department breakdowns.
 """)
 
-uploaded = st.file_uploader("Upload course data (CSV or JSON)", type=["csv", "json"])
-df = None
-if uploaded:
-    try:
-        if uploaded.name.endswith(".csv"):
-            df = pd.read_csv(uploaded)
-        else:
-            df = pd.read_json(uploaded)
-        st.success("File uploaded successfully!")
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
+data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
+all_courses_path = os.path.join(data_dir, 'all_courses.csv')
 
-if df is not None:
-    # Combine text fields for classification
-    if "full_text" not in df.columns:
-        if "Course Name" in df.columns and "Course Description" in df.columns:
-            df["full_text"] = df["Course Name"].astype(str) + " " + df["Course Description"].astype(str)
-        else:
-            st.error("Input data must have 'Course Name' and 'Course Description' columns or a 'full_text' column.")
-            st.stop()
+if st.button("Update Course Data from JHU Catalog"):
+    with st.spinner("Extracting latest course data. This may take a few minutes..."):
+        try:
+            scrape_all_years()
+            st.success("Course data updated successfully!")
+        except Exception as e:
+            st.error(f"Error updating course data: {e}")
+
+# Load the latest data if available
+if os.path.exists(all_courses_path):
+    df = pd.read_csv(all_courses_path)
     st.write("Data Preview:", df.head())
 
     method = st.selectbox(
@@ -46,7 +40,7 @@ if df is not None:
 
     if method == "Rule-based":
         st.markdown("Rule-based: Uses keyword matching to assign categories.")
-        df["PH_Label"] = df["full_text"].apply(label_course)
+        df["PH_Label"] = df["full_text"].apply(label_course) if "full_text" in df.columns else df["Course Name"].astype(str) + " " + df["Course Description"].astype(str).apply(label_course)
         st.write(df["PH_Label"].value_counts())
     elif method == "Semantic Similarity":
         st.markdown("Semantic Similarity: Compares your courses to known planetary health examples using AI.")
@@ -92,4 +86,4 @@ if df is not None:
     st.write("### Departmental Breakdown")
     plot_departmental_breakdown(df)
 else:
-    st.info("Please upload a file to begin.") 
+    st.info("No course data found. Click the button above to fetch the latest data.") 
