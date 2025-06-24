@@ -1,6 +1,16 @@
 import streamlit as st
 import pandas as pd
 import os
+import sys
+
+# Ensure the Scripts directory is in sys.path for imports
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, '..'))
+if script_dir not in sys.path:
+    sys.path.append(script_dir)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 from Scripts.classification import (
     label_course, semantic_similarity_classify, zero_shot_classify, cluster_courses
 )
@@ -17,7 +27,7 @@ st.sidebar.markdown("""
 4. View visualizations of trends and department breakdowns.
 """)
 
-data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
+data_dir = os.path.join(project_root, 'data')
 all_courses_path = os.path.join(data_dir, 'all_courses.csv')
 
 if st.button("Update Course Data from JHU Catalog"):
@@ -40,7 +50,14 @@ if os.path.exists(all_courses_path):
 
     if method == "Rule-based":
         st.markdown("Rule-based: Uses keyword matching to assign categories.")
-        df["PH_Label"] = df["full_text"].apply(label_course) if "full_text" in df.columns else df["Course Name"].astype(str) + " " + df["Course Description"].astype(str).apply(label_course)
+        if "full_text" in df.columns:
+            df["PH_Label"] = df["full_text"].apply(label_course)
+        elif "Course Name" in df.columns and "Course Description" in df.columns:
+            df["full_text"] = df["Course Name"].astype(str) + " " + df["Course Description"].astype(str)
+            df["PH_Label"] = df["full_text"].apply(label_course)
+        else:
+            st.error("Input data must have 'Course Name' and 'Course Description' columns or a 'full_text' column.")
+            st.stop()
         st.write(df["PH_Label"].value_counts())
     elif method == "Semantic Similarity":
         st.markdown("Semantic Similarity: Compares your courses to known planetary health examples using AI.")
