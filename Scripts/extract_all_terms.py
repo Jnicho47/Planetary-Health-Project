@@ -54,12 +54,13 @@ def get_all_courses(term, page=1):
             "exhaustive_search": True,
             "sort_by": "_text_match:desc,OfferingName:asc,SectionName:asc",
             "facet_return_parent": "Areas.Description",
+            "stopwords": "stopwords",
             "highlight_full_fields": "Title,OfferingName,OfferingVariations,SectionName,Description,InstructorsFullName",
             "collection": "sections",
-            "facet_by": "Areas.Description,SubDepartment,CNM_TermsID,SchoolName,AllDepartments,Level,LocationDelimited,Status,Credits,TimeOfDay",
-            "filter_by": f"HierarchicalTerm.Value:=['{term}']",
+            "q": "*",
+            "facet_by": "Areas.Description,SubDepartment,CMN_TermsID,SchoolName,AllDepartments,Level,LocationDelimited,Status,Credits,TimeOfDay,DOW,HierarchicalTerm.lvl0",
+            "filter_by": f"HierarchicalTerm.lvl0:=[`{term}`]",
             "max_facet_values": 100,
-            "q": "",
             "page": page
         }]
     })
@@ -85,7 +86,8 @@ def scrape_all_pages(term, max_pages=1000):
                 "Semester": term,
                 "Academic Year": academic_year,
                 "Location": doc.get("LocationDelimited"),
-                "Course Name": doc.get("SectionName"),
+                "Course Number (Section)": doc.get("SectionName"),
+                "Course Name": doc.get("Title"),
                 "Course Description": doc.get("Description"),
                 "Department": doc.get("AllDepartments"),
                 "School": doc.get("SchoolName"),
@@ -96,7 +98,7 @@ def scrape_all_pages(term, max_pages=1000):
 
 def initial_extraction(start_year=2019, end_year=None, max_pages=1000, outdir="./data"):
     """
-    Download and save ALL semesters (overwriting existing files), and only if they have >300 classes.
+    Download and save ALL semesters (overwriting existing files), and only if they have >10 classes (for testing).
     Returns a list of semesters added.
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -108,7 +110,7 @@ def initial_extraction(start_year=2019, end_year=None, max_pages=1000, outdir=".
     for term in terms:
         print(f"Scraping {term}...")
         df = scrape_all_pages(term, max_pages=max_pages)
-        if not df.empty and len(df) > 300:
+        if not df.empty and len(df) > 10:
             df.to_csv(os.path.join(outdir, f"{term.replace(' ', '_')}.csv"), index=False)
             all_data.append(df)
             added_terms.append(term)
@@ -119,7 +121,7 @@ def initial_extraction(start_year=2019, end_year=None, max_pages=1000, outdir=".
 
 def incremental_scrape(start_year=2019, end_year=None, max_pages=1000, outdir="./data"):
     """
-    Only download and save semesters not already present in the data directory, and only if they have >300 classes.
+    Only download and save semesters not already present in the data directory, and only if they have >10 classes (for testing).
     Returns a list of new semesters added.
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -134,7 +136,7 @@ def incremental_scrape(start_year=2019, end_year=None, max_pages=1000, outdir=".
             continue
         print(f"Scraping {term}...")
         df = scrape_all_pages(term, max_pages=max_pages)
-        if not df.empty and len(df) > 300:
+        if not df.empty and len(df) > 10:
             df.to_csv(os.path.join(outdir, f"{term.replace(' ', '_')}.csv"), index=False)
             new_data.append(df)
             new_terms.append(term)
