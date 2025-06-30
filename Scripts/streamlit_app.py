@@ -250,4 +250,17 @@ if os.path.exists(all_courses_path):
     st.write("### Departmental Breakdown")
     plot_departmental_breakdown(df)
 else:
-    st.info("No course data found. Click the button above to fetch the latest data.") 
+    st.info("No course data found. Click the button above to fetch the latest data.")
+
+# --- New: List and preview data files ---
+with st.expander("📂 Browse Extracted Data Files", expanded=False):
+    data_files = [f for f in os.listdir(data_dir) if f.endswith('.csv') and f != 'all_courses.csv']
+    if data_files:
+        selected_file = st.selectbox("Select a data file to preview:", sorted(data_files))
+        if selected_file:
+            df_preview = pd.read_csv(os.path.join(data_dir, selected_file))
+            st.write(f"Preview of `{selected_file}`:")
+            st.dataframe(df_preview.head(100))
+            st.download_button("Download this file as CSV", df_preview.to_csv(index=False), selected_file)
+    else:
+        st.info("No data files found in the data directory.") 
