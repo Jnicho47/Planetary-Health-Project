@@ -16,6 +16,7 @@ from Scripts.classification import (
     label_course, semantic_similarity_classify, zero_shot_classify, cluster_courses
 )
 from Scripts.extract_all_terms import initial_extraction, incremental_scrape
+from Scripts.analysis import plot_yearly_trends, plot_departmental_breakdown
 
 def get_data_dir():
     # Prefer 'data', fallback to 'Data' if it exists
@@ -153,12 +154,12 @@ with st.expander("Adjust Keyword Lists (optional)"):
     env_keywords = st.text_area(
         "Environmental change keywords (comma-separated)",
         value=", ".join(def_list_env),
-        height=60
+        height=70
     ).split(",")
     health_keywords = st.text_area(
         "Human health keywords (comma-separated)",
         value=", ".join(def_list_health),
-        height=60
+        height=70
     ).split(",")
     env_keywords = [k.strip() for k in env_keywords if k.strip()]
     health_keywords = [k.strip() for k in health_keywords if k.strip()]
