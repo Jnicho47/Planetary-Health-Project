@@ -38,7 +38,7 @@ def get_academic_year(term):
     year = int(year)
     if season.lower() == 'fall':
         return f"{str(year)[-2:]}-{str(year+1)[-2:]}"
-    elif season.lower() == 'spring':
+    elif season.lower() in ['spring', 'intersession', 'summer']:
         return f"{str(year-1)[-2:]}-{str(year)[-2:]}"
     else:
         return ''
