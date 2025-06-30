@@ -101,6 +101,7 @@ def initial_extraction(start_year=2019, end_year=None, max_pages=1000, outdir=".
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     outdir = os.path.abspath(os.path.join(script_dir, '..', 'data'))
+    print(f"[DEBUG] Writing extracted data to: {outdir}")
     os.makedirs(outdir, exist_ok=True)
     terms = generate_terms(start_year, end_year)
     added_terms = []
@@ -124,6 +125,7 @@ def incremental_scrape(start_year=2019, end_year=None, max_pages=1000, outdir=".
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     outdir = os.path.abspath(os.path.join(script_dir, '..', 'data'))
+    print(f"[DEBUG] Writing extracted data to: {outdir}")
     os.makedirs(outdir, exist_ok=True)
     terms = generate_terms(start_year, end_year)
     existing = set(f.replace('.csv','').replace('_',' ') for f in os.listdir(outdir) if f.endswith('.csv') and f != 'all_courses.csv')
