@@ -28,7 +28,20 @@ def generate_terms(start_year=2019, end_year=None):
         terms.append(f"Spring {year}")
     return terms
 
-def get_all_courses(page, term):
+def get_academic_year(term):
+    parts = term.split()
+    if len(parts) != 2:
+        return ''
+    season, year = parts
+    year = int(year)
+    if season.lower() == 'fall':
+        return f"{str(year)[-2:]}-{str(year+1)[-2:]}"
+    elif season.lower() == 'spring':
+        return f"{str(year-1)[-2:]}-{str(year)[-2:]}"
+    else:
+        return ''
+
+def get_all_courses(page, term, url, api, headers):
     params = {"x-typesense-api-key": api}
     data = json.dumps({
         "searches": [{
@@ -51,25 +64,11 @@ def get_all_courses(page, term):
     response = requests.post(url, params=params, headers=headers, data=data)
     return response.json()
 
-def get_academic_year(term):
-    """Given a term like 'Fall 2019' or 'Spring 2020', return the academic year string like '19-20'."""
-    parts = term.split()
-    if len(parts) != 2:
-        return ''
-    season, year = parts
-    year = int(year)
-    if season.lower() == 'fall':
-        return f"{str(year)[-2:]}-{str(year+1)[-2:]}"
-    elif season.lower() == 'spring':
-        return f"{str(year-1)[-2:]}-{str(year)[-2:]}"
-    else:
-        return ''
-
-def scrape_all_pages(term, max_pages=1000):
+def scrape_all_pages(term, url, api, headers, max_pages=1000):
     all_courses = []
     academic_year = get_academic_year(term)
     for page in range(1, max_pages + 1):
-        res = get_all_courses(page=page, term=term)
+        res = get_all_courses(page=page, term=term, url=url, api=api, headers=headers)
         sections = res.get("results", [{}])[0].get("hits", [])
         if not sections:
             break
@@ -88,27 +87,45 @@ def scrape_all_pages(term, max_pages=1000):
             })
     return pd.DataFrame(all_courses)
 
-def scrape_all_years(start_year=2019, end_year=None, max_pages=1000, outdir="./data"):
+def incremental_scrape(start_year=2019, end_year=None, max_pages=1000, outdir="./data"):
+    """
+    Only download and save semesters not already present in the data directory, and only if they have >300 classes.
+    Returns a list of new semesters added.
+    """
+    url = "https://tn0vi78cyja5u3rgp.a1.typesense.net/multi_search"
+    api = "ck8wVFJjVFRWays5SGlpK3J0SmErQUpoOFdiVE11d3ozbTJRRWx5T3Riaz13N0RaeyJleGNsdWRlX2ZpZWxkcyI6IlNlY3Rpb25EZXRhaWxzLk1lZXRpbmdzLkxvY2F0aW9uLFNlY3Rpb25EZXRhaWxzLk1lZXRpbmdzLlJvb20ifQ=="
+    headers = {
+        'accept': 'application/json, text/plain, */*',
+        'content-type': 'text/plain',
+        'origin': 'https://courses.jhu.edu',
+        'referer': 'https://courses.jhu.edu/',
+        'user-agent': 'Mozilla/5.0',
+    }
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Go to the sibling 'data' directory
-    outdir = os.path.join(script_dir, '..', 'data')
+    outdir = os.path.abspath(os.path.join(script_dir, '..', 'data'))
     os.makedirs(outdir, exist_ok=True)
     terms = generate_terms(start_year, end_year)
-    all_data = []
+    existing = set(f.replace('.csv','').replace('_',' ') for f in os.listdir(outdir) if f.endswith('.csv') and f != 'all_courses.csv')
+    new_data = []
+    new_terms = []
     for term in terms:
+        if term.replace(' ', '_') in existing or term in existing:
+            continue
         print(f"Scraping {term}...")
-        df = scrape_all_pages(term=term, max_pages=max_pages)
+        df = scrape_all_pages(term, url, api, headers, max_pages=max_pages)
         if not df.empty and len(df) > 300:
             df.to_csv(os.path.join(outdir, f"{term.replace(' ', '_')}.csv"), index=False)
-            all_data.append(df)
-    if all_data:
-        df_all = pd.concat(all_data, ignore_index=True)
+            new_data.append(df)
+            new_terms.append(term)
+    # Update all_courses.csv
+    all_csvs = [os.path.join(outdir, f) for f in os.listdir(outdir) if f.endswith('.csv') and f != 'all_courses.csv']
+    if all_csvs:
+        df_all = pd.concat([pd.read_csv(f) for f in all_csvs], ignore_index=True)
         df_all.to_csv(os.path.join(outdir, "all_courses.csv"), index=False)
-        print(f"Saved all courses to {os.path.join(outdir, 'all_courses.csv')}")
-    else:
-        print("No data scraped.")
+    return new_terms
 
 if __name__ == "__main__":
-    print("Starting course data extraction from Fall 2019...")
-    scrape_all_years()
+    print("Starting incremental course data extraction from Fall 2019...")
+    added = incremental_scrape()
+    print(f"Added new semesters: {added}")
     print("Extraction complete! Check the data folder for results.") 
