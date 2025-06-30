@@ -41,7 +41,7 @@ def get_academic_year(term):
     else:
         return ''
 
-def get_all_courses(page, term, url, api, headers):
+def get_all_courses(page, term):
     params = {"x-typesense-api-key": api}
     data = json.dumps({
         "searches": [{
@@ -64,11 +64,11 @@ def get_all_courses(page, term, url, api, headers):
     response = requests.post(url, params=params, headers=headers, data=data)
     return response.json()
 
-def scrape_all_pages(term, url, api, headers, max_pages=1000):
+def scrape_all_pages(term, max_pages=1000):
     all_courses = []
     academic_year = get_academic_year(term)
     for page in range(1, max_pages + 1):
-        res = get_all_courses(page=page, term=term, url=url, api=api, headers=headers)
+        res = get_all_courses(page=page, term=term)
         sections = res.get("results", [{}])[0].get("hits", [])
         if not sections:
             break
@@ -87,20 +87,34 @@ def scrape_all_pages(term, url, api, headers, max_pages=1000):
             })
     return pd.DataFrame(all_courses)
 
+def initial_extraction(start_year=2019, end_year=None, max_pages=1000, outdir="./data"):
+    """
+    Download and save ALL semesters (overwriting existing files), and only if they have >300 classes.
+    Returns a list of semesters added.
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    outdir = os.path.abspath(os.path.join(script_dir, '..', 'data'))
+    os.makedirs(outdir, exist_ok=True)
+    terms = generate_terms(start_year, end_year)
+    added_terms = []
+    all_data = []
+    for term in terms:
+        print(f"Scraping {term}...")
+        df = scrape_all_pages(term, max_pages=max_pages)
+        if not df.empty and len(df) > 300:
+            df.to_csv(os.path.join(outdir, f"{term.replace(' ', '_')}.csv"), index=False)
+            all_data.append(df)
+            added_terms.append(term)
+    if all_data:
+        df_all = pd.concat(all_data, ignore_index=True)
+        df_all.to_csv(os.path.join(outdir, "all_courses.csv"), index=False)
+    return added_terms
+
 def incremental_scrape(start_year=2019, end_year=None, max_pages=1000, outdir="./data"):
     """
     Only download and save semesters not already present in the data directory, and only if they have >300 classes.
     Returns a list of new semesters added.
     """
-    url = "https://tn0vi78cyja5u3rgp.a1.typesense.net/multi_search"
-    api = "ck8wVFJjVFRWays5SGlpK3J0SmErQUpoOFdiVE11d3ozbTJRRWx5T3Riaz13N0RaeyJleGNsdWRlX2ZpZWxkcyI6IlNlY3Rpb25EZXRhaWxzLk1lZXRpbmdzLkxvY2F0aW9uLFNlY3Rpb25EZXRhaWxzLk1lZXRpbmdzLlJvb20ifQ=="
-    headers = {
-        'accept': 'application/json, text/plain, */*',
-        'content-type': 'text/plain',
-        'origin': 'https://courses.jhu.edu',
-        'referer': 'https://courses.jhu.edu/',
-        'user-agent': 'Mozilla/5.0',
-    }
     script_dir = os.path.dirname(os.path.abspath(__file__))
     outdir = os.path.abspath(os.path.join(script_dir, '..', 'data'))
     os.makedirs(outdir, exist_ok=True)
@@ -112,7 +126,7 @@ def incremental_scrape(start_year=2019, end_year=None, max_pages=1000, outdir=".
         if term.replace(' ', '_') in existing or term in existing:
             continue
         print(f"Scraping {term}...")
-        df = scrape_all_pages(term, url, api, headers, max_pages=max_pages)
+        df = scrape_all_pages(term, max_pages=max_pages)
         if not df.empty and len(df) > 300:
             df.to_csv(os.path.join(outdir, f"{term.replace(' ', '_')}.csv"), index=False)
             new_data.append(df)
@@ -125,7 +139,10 @@ def incremental_scrape(start_year=2019, end_year=None, max_pages=1000, outdir=".
     return new_terms
 
 if __name__ == "__main__":
-    print("Starting incremental course data extraction from Fall 2019...")
-    added = incremental_scrape()
-    print(f"Added new semesters: {added}")
+    print("Starting initial extraction from Fall 2019...")
+    added = initial_extraction()
+    print(f"Added semesters: {added}")
+    print("Now running incremental scrape...")
+    added2 = incremental_scrape()
+    print(f"Added new semesters: {added2}")
     print("Extraction complete! Check the data folder for results.") 

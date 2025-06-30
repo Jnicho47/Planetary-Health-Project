@@ -15,7 +15,7 @@ if project_root not in sys.path:
 from Scripts.classification import (
     label_course, semantic_similarity_classify, zero_shot_classify, cluster_courses
 )
-from Scripts.extract_all_terms import incremental_scrape
+from Scripts.extract_all_terms import initial_extraction, incremental_scrape
 
 def get_available_semesters(data_dir):
     files = [f for f in os.listdir(data_dir) if f.endswith('.csv') and f != 'all_courses.csv']
@@ -63,10 +63,11 @@ st.markdown("""
 Welcome! This tool lets you fetch, analyze, and classify JHU course data for planetary health research—**no coding required**.
 
 **How it works:**
-1. Click **Update Course Data** to fetch the latest semesters (only new ones with >300 classes are added).
-2. Select semesters/academic years to analyze.
-3. Adjust keywords for environmental change and human health.
-4. Click **Run Keyword Analysis** to classify and download results.
+1. Click **Initial Extraction** to fetch and overwrite all semesters (use only once for a fresh start).
+2. Click **Update Course Data** to fetch only new semesters (with >300 classes).
+3. Select semesters/academic years to analyze.
+4. Adjust keywords for environmental change and human health.
+5. Click **Run Keyword Analysis** to classify and download results.
 
 ---
 """)
@@ -76,19 +77,33 @@ data_dir = os.path.join(project_root, 'data')
 os.makedirs(data_dir, exist_ok=True)
 
 # --- Scraping Button and Feedback ---
-col1, col2 = st.columns([1, 3])
+col1, col2 = st.columns([1, 1])
 with col1:
-    scrape_btn = st.button("🔄 Update Course Data from JHU Catalog")
+    initial_btn = st.button("🆕 Initial Extraction (Overwrite All Data)")
 with col2:
-    st.markdown("**This may take a few minutes. Only new semesters will be added.**")
+    update_btn = st.button("🔄 Update Course Data (Add New Semesters)")
 
-scrape_status = st.empty()
+status_box = st.empty()
 
-if scrape_btn:
+if initial_btn:
     if not check_internet():
-        scrape_status.error("No internet connection. Please check your network and try again.")
+        status_box.error("No internet connection. Please check your network and try again.")
     else:
-        with scrape_status, st.spinner("Extracting latest course data from JHU. Please wait..."):
+        with status_box, st.spinner("Performing initial extraction. This may take several minutes..."):
+            try:
+                added = initial_extraction()
+                if added:
+                    st.success(f"✅ Initial extraction complete. Semesters added: {', '.join(added)}")
+                else:
+                    st.warning("No semesters were added. Check your connection or try again later.")
+            except Exception as e:
+                st.error(f"❌ Error during initial extraction: {e}")
+
+if update_btn:
+    if not check_internet():
+        status_box.error("No internet connection. Please check your network and try again.")
+    else:
+        with status_box, st.spinner("Updating course data. This may take a few minutes..."):
             try:
                 new_terms = incremental_scrape()
                 if new_terms:
@@ -97,16 +112,10 @@ if scrape_btn:
                     st.info("No new semesters found. All available data is up to date.")
             except Exception as e:
                 st.error(f"❌ Error updating course data: {e}")
-                st.markdown("""
-                **Troubleshooting:**
-                - Check your internet connection.
-                - The JHU course catalog may be temporarily unavailable.
-                - If the problem persists, contact your technical support team.
-                """)
 
 semesters = get_available_semesters(data_dir)
 if not semesters:
-    st.warning("No course data found. Click 'Update Course Data from JHU Catalog' above to fetch the latest data.")
+    st.warning("No course data found. Use 'Initial Extraction' or 'Update Course Data' above to fetch the latest data.")
     st.stop()
 
 # --- Semester Selection and Keyword Analysis ---
