@@ -24,8 +24,10 @@ def generate_terms(start_year=2019, end_year=None):
         end_year = datetime.now().year
     terms = []
     for year in range(start_year, end_year + 1):
-        terms.append(f"Fall {year}")
+        terms.append(f"Intersession {year}")
         terms.append(f"Spring {year}")
+        terms.append(f"Summer {year}")
+        terms.append(f"Fall {year}")
     return terms
 
 def get_academic_year(term):
