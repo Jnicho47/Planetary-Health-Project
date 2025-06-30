@@ -17,6 +17,18 @@ from Scripts.classification import (
 )
 from Scripts.extract_all_terms import initial_extraction, incremental_scrape
 
+def get_data_dir():
+    # Prefer 'data', fallback to 'Data' if it exists
+    d1 = os.path.join(project_root, 'data')
+    d2 = os.path.join(project_root, 'Data')
+    if os.path.isdir(d1):
+        return d1
+    elif os.path.isdir(d2):
+        return d2
+    else:
+        os.makedirs(d1, exist_ok=True)
+        return d1
+
 def get_available_semesters(data_dir):
     files = [f for f in os.listdir(data_dir) if f.endswith('.csv') and f != 'all_courses.csv']
     return sorted([f.replace('.csv', '').replace('_', ' ') for f in files])
@@ -72,11 +84,12 @@ Welcome! This tool lets you fetch, analyze, and classify JHU course data for pla
 ---
 """)
 
-# --- Data Directory ---
-data_dir = os.path.join(project_root, 'data')
-os.makedirs(data_dir, exist_ok=True)
+data_dir = get_data_dir()
 
-# --- Scraping Button and Feedback ---
+# Warn if both 'data' and 'Data' exist (case-sensitive filesystem)
+if os.path.isdir(os.path.join(project_root, 'data')) and os.path.isdir(os.path.join(project_root, 'Data')):
+    st.warning("Both 'data' and 'Data' directories exist. Please use only one to avoid confusion.")
+
 col1, col2 = st.columns([1, 1])
 with col1:
     initial_btn = st.button("🆕 Initial Extraction (Overwrite All Data)")
@@ -115,10 +128,9 @@ if update_btn:
 
 semesters = get_available_semesters(data_dir)
 if not semesters:
-    st.warning("No course data found. Use 'Initial Extraction' or 'Update Course Data' above to fetch the latest data.")
+    st.warning("No course data found. Use 'Initial Extraction' or 'Update Course Data' above to fetch the latest data.\n\nIf you just ran extraction, check for errors above or ensure the API is returning data.")
     st.stop()
 
-# --- Semester Selection and Keyword Analysis ---
 st.markdown("---")
 st.header("Analyze Courses by Semester and Keywords")
 
@@ -164,7 +176,6 @@ if run_analysis:
         st.dataframe(df[["Course Name", "PH_Label", "Semester", "Academic Year"] + [c for c in df.columns if c not in ["Course Name", "PH_Label", "Semester", "Academic Year"]]].head(50))
         st.download_button("⬇️ Download Results as CSV", df.to_csv(index=False), "keyword_analysis_results.csv")
 
-# --- Troubleshooting Section ---
 st.markdown("""
 ---
 ### Troubleshooting
