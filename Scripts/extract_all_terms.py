@@ -8,9 +8,9 @@ from datetime import datetime
 # Output: CSV files in ../data/ for each term and a combined all_courses.csv
 
 # === Constants for extraction ===
-url = "https://tn0vi78cyja5u3rgp.a1.typesense.net/multi_search"
-api = "ck8wVFJjVFRWays5SGlpK3J0SmErQUpoOFdiVE11d3ozbTJRRWx5T3Riaz13N0RaeyJleGNsdWRlX2ZpZWxkcyI6IlNlY3Rpb25EZXRhaWxzLk1lZXRpbmdzLkxvY2F0aW9uLFNlY3Rpb25EZXRhaWxzLk1lZXRpbmdzLlJvb20ifQ=="  # Replace with your actual API key
-headers = {
+URL = "https://tn0vi78cyja5u3rgp.a1.typesense.net/multi_search"
+API_KEY = "ck8wVFJjVFRWays5SGlpK3J0SmErQUpoOFdiVE11d3ozbTJRRWx5T3Riaz13N0RaeyJleGNsdWRlX2ZpZWxkcyI6IlNlY3Rpb25EZXRhaWxzLk1lZXRpbmdzLkxvY2F0aW9uLFNlY3Rpb25EZXRhaWxzLk1lZXRpbmdzLlJvb20ifQ=="
+HEADERS = {
     'accept': 'application/json, text/plain, */*',
     'content-type': 'text/plain',
     'origin': 'https://courses.jhu.edu',
@@ -41,8 +41,8 @@ def get_academic_year(term):
     else:
         return ''
 
-def get_all_courses(page, term):
-    params = {"x-typesense-api-key": api}
+def get_all_courses(term, page=1):
+    params = {"x-typesense-api-key": API_KEY}
     data = json.dumps({
         "searches": [{
             "query_by": "Title,OfferingName,OfferingVariations,SectionName,Description,InstructorsFullName",
@@ -61,14 +61,19 @@ def get_all_courses(page, term):
             "page": page
         }]
     })
-    response = requests.post(url, params=params, headers=headers, data=data)
+    response = requests.post(URL, params=params, headers=HEADERS, data=data)
+    response.raise_for_status()
     return response.json()
 
 def scrape_all_pages(term, max_pages=1000):
     all_courses = []
     academic_year = get_academic_year(term)
     for page in range(1, max_pages + 1):
-        res = get_all_courses(page=page, term=term)
+        try:
+            res = get_all_courses(term, page=page)
+        except Exception as e:
+            print(f"Error fetching page {page} for {term}: {e}")
+            break
         sections = res.get("results", [{}])[0].get("hits", [])
         if not sections:
             break
